@@ -20,13 +20,24 @@ export default function Home() {
     setCurrentStep('wallet-selection')
   }
 
+  const handleThemeToggle = () => {
+    console.log('Theme toggle clicked! Current theme:', isDark ? 'dark' : 'light')
+    toggleTheme()
+    // Check if the class was applied
+    setTimeout(() => {
+      const hasDarkClass = document.documentElement.classList.contains('dark')
+      console.log('HTML has dark class after toggle:', hasDarkClass)
+      console.log('LocalStorage theme:', localStorage.getItem('theme'))
+    }, 100)
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 transition-colors duration-300">
       <div className="max-w-2xl mx-auto">
         {/* Theme Toggle - Made More Prominent */}
         <div className="flex justify-center mb-6">
           <button
-            onClick={toggleTheme}
+            onClick={handleThemeToggle}
             className="flex items-center space-x-3 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 dark:from-purple-500 dark:to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-white dark:border-gray-700"
             title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
@@ -46,6 +57,13 @@ export default function Home() {
               </>
             )}
           </button>
+        </div>
+
+        {/* Debug Info */}
+        <div className="text-center mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Current Theme: {isDark ? 'Dark' : 'Light'} | 
+          HTML Class: {document.documentElement.classList.contains('dark') ? 'dark' : 'light'} |
+          Storage: {typeof window !== 'undefined' ? localStorage.getItem('theme') || 'none' : 'loading...'}
         </div>
 
         <div className="text-center mb-8">

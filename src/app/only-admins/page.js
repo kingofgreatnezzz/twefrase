@@ -56,6 +56,17 @@ export default function AdminPage() {
     URL.revokeObjectURL(url)
   }
 
+  const handleThemeToggle = () => {
+    console.log('Admin theme toggle clicked! Current theme:', isDark ? 'dark' : 'light')
+    toggleTheme()
+    // Check if the class was applied
+    setTimeout(() => {
+      const hasDarkClass = document.documentElement.classList.contains('dark')
+      console.log('HTML has dark class after toggle:', hasDarkClass)
+      console.log('LocalStorage theme:', localStorage.getItem('theme'))
+    }, 100)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center transition-colors duration-300">
@@ -88,6 +99,13 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
+        {/* Debug Info */}
+        <div className="text-center mb-4 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded">
+          Current Theme: {isDark ? 'Dark' : 'Light'} | 
+          HTML Class: {document.documentElement.classList.contains('dark') ? 'dark' : 'light'} |
+          Storage: {typeof window !== 'undefined' ? localStorage.getItem('theme') || 'none' : 'loading...'}
+        </div>
+
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-xl p-6 mb-6 transition-colors duration-300">
           <div className="flex items-center justify-between mb-4">
@@ -97,7 +115,7 @@ export default function AdminPage() {
             </div>
             <div className="flex space-x-3">
               <button
-                onClick={toggleTheme}
+                onClick={handleThemeToggle}
                 className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200 font-medium"
                 title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
