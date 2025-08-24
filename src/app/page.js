@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '../contexts/ThemeContext'
 import WalletSelector from '../components/WalletSelector'
 import PhraseInput from '../components/PhraseInput'
@@ -8,27 +8,89 @@ import PhraseInput from '../components/PhraseInput'
 export default function Home() {
   const [selectedWallet, setSelectedWallet] = useState(null)
   const [currentStep, setCurrentStep] = useState('wallet-selection')
+  const [error, setError] = useState(null)
   const { isDark, toggleTheme } = useTheme()
 
+  // Add error boundary
+  useEffect(() => {
+    const handleError = (event) => {
+      console.error('Global error caught:', event.error)
+      setError(event.error.message)
+    }
+
+    window.addEventListener('error', handleError)
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Unhandled promise rejection:', event.reason)
+      setError(event.reason.message)
+    })
+
+    return () => {
+      window.removeEventListener('error', handleError)
+      window.removeEventListener('unhandledrejection', handleError)
+    }
+  }, [])
+
   const handleWalletSelect = (wallet) => {
-    setSelectedWallet(wallet)
-    setCurrentStep('phrase-input')
+    try {
+      setSelectedWallet(wallet)
+      setCurrentStep('phrase-input')
+      setError(null) // Clear any previous errors
+    } catch (err) {
+      console.error('Error selecting wallet:', err)
+      setError(err.message)
+    }
   }
 
   const handleBackToWalletSelection = () => {
-    setSelectedWallet(null)
-    setCurrentStep('wallet-selection')
+    try {
+      setSelectedWallet(null)
+      setCurrentStep('wallet-selection')
+      setError(null)
+    } catch (err) {
+      console.error('Error going back:', err)
+      setError(err.message)
+    }
   }
 
   const handleThemeToggle = () => {
-    console.log('Theme toggle clicked! Current theme:', isDark ? 'dark' : 'light')
-    toggleTheme()
-    // Check if the class was applied
-    setTimeout(() => {
-      const hasDarkClass = document.documentElement.classList.contains('dark')
-      console.log('HTML has dark class after toggle:', hasDarkClass)
-      console.log('LocalStorage theme:', localStorage.getItem('theme'))
-    }, 100)
+    try {
+      console.log('Theme toggle clicked! Current theme:', isDark ? 'dark' : 'light')
+      toggleTheme()
+      // Check if the class was applied
+      setTimeout(() => {
+        const hasDarkClass = document.documentElement.classList.contains('dark')
+        console.log('HTML has dark class after toggle:', hasDarkClass)
+        console.log('LocalStorage theme:', localStorage.getItem('theme'))
+      }, 100)
+    } catch (err) {
+      console.error('Error toggling theme:', err)
+      setError(err.message)
+    }
+  }
+
+  // Show error if something went wrong
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900 dark:to-red-800 p-4 transition-colors duration-300">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl dark:shadow-2xl p-8 text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Something went wrong</h1>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">{error}</p>
+            <button
+              onClick={() => {
+                setError(null)
+                setCurrentStep('wallet-selection')
+                setSelectedWallet(null)
+              }}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

