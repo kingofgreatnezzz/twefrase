@@ -18,6 +18,35 @@ export default function Home() {
       setError(event.error.message)
     }
 
+    // Add mobile-specific debugging
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    console.log('Device Info:', {
+      userAgent: navigator.userAgent,
+      isMobile: isMobile,
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      },
+      screen: {
+        width: window.screen.width,
+        height: window.screen.height
+      }
+    })
+
+    // Check for mobile-specific issues
+    if (isMobile) {
+      console.log('Mobile device detected - checking for compatibility issues...')
+      
+      // Check if required APIs are available
+      const requiredAPIs = ['fetch', 'localStorage', 'addEventListener']
+      requiredAPIs.forEach(api => {
+        if (typeof window[api] === 'undefined') {
+          console.error(`Missing required API: ${api}`)
+          setError(`Mobile compatibility issue: ${api} not available`)
+        }
+      })
+    }
+
     window.addEventListener('error', handleError)
     window.addEventListener('unhandledrejection', (event) => {
       console.error('Unhandled promise rejection:', event.reason)
@@ -70,23 +99,51 @@ export default function Home() {
 
   // Show error if something went wrong
   if (error) {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900 dark:to-red-800 p-4 transition-colors duration-300">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl dark:shadow-2xl p-8 text-center">
             <div className="text-red-500 text-6xl mb-4">⚠️</div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Something went wrong</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              {isMobile ? 'Mobile Loading Issue' : 'Something went wrong'}
+            </h1>
             <p className="text-gray-600 dark:text-gray-300 mb-6">{error}</p>
-            <button
-              onClick={() => {
-                setError(null)
-                setCurrentStep('wallet-selection')
-                setSelectedWallet(null)
-              }}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Try Again
-            </button>
+            
+            {isMobile && (
+              <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg mb-6 text-left">
+                <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Mobile Troubleshooting:</h3>
+                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                  <li>• Try refreshing the page</li>
+                  <li>• Check your internet connection</li>
+                  <li>• Try opening in a different browser</li>
+                  <li>• Clear browser cache and cookies</li>
+                </ul>
+              </div>
+            )}
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => {
+                  setError(null)
+                  setCurrentStep('wallet-selection')
+                  setSelectedWallet(null)
+                }}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Try Again
+              </button>
+              
+              {isMobile && (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Refresh Page
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
