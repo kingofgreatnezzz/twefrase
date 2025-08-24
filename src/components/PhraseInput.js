@@ -133,7 +133,7 @@ export default function PhraseInput({ selectedWallet, onBack }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
           {phrase.map((word, index) => (
             <div key={index} className="relative">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">

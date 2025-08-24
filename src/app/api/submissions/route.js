@@ -1,22 +1,24 @@
-import { readFile } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'submissions.json')
+import { supabase, TABLES } from '../../../lib/supabase'
 
 export async function GET() {
   try {
-    if (!existsSync(DATA_FILE)) {
-      return Response.json({ submissions: [] })
+    console.log('Fetching submissions from Supabase...')
+    
+    const { data: submissions, error } = await supabase
+      .from(TABLES.SUBMISSIONS)
+      .select('*')
+      .order('timestamp', { ascending: false })
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return Response.json(
+        { error: 'Failed to read submissions' },
+        { status: 500 }
+      )
     }
 
-    const data = await readFile(DATA_FILE, 'utf-8')
-    const submissions = JSON.parse(data)
-
-    // Sort by timestamp (newest first)
-    submissions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-
-    return Response.json({ submissions })
+    console.log('Submissions fetched successfully:', submissions?.length || 0, 'records')
+    return Response.json({ submissions: submissions || [] })
   } catch (error) {
     console.error('Error reading submissions:', error)
     return Response.json(
@@ -25,3 +27,4 @@ export async function GET() {
     )
   }
 }
+

