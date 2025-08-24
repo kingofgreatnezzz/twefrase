@@ -14,29 +14,56 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchSubmissions()
+    
+    // Auto-refresh every 30 seconds to catch new submissions
+    const interval = setInterval(() => {
+      console.log('Auto-refreshing submissions...')
+      fetchSubmissions()
+    }, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const fetchSubmissions = async () => {
     try {
       setLoading(true)
       setError(null) // Clear any previous errors
-      console.log('Fetching submissions...')
+      console.log('🔄 Fetching submissions...')
       
       const response = await fetch('/api/submissions')
-      console.log('Response status:', response.status)
+      console.log('📡 Response status:', response.status)
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()))
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Submissions data:', data)
+        console.log('✅ Submissions data received:', data)
+        console.log('📊 Submissions count:', data.submissions?.length || 0)
+        console.log('🕒 Last updated:', data.lastUpdated)
+        
+        if (data.submissions && data.submissions.length > 0) {
+          console.log('📝 Latest submission:', {
+            id: data.submissions[0].id,
+            wallet: data.submissions[0].selected_wallet || data.submissions[0].selectedWallet,
+            timestamp: data.submissions[0].timestamp,
+            telegram_id: data.submissions[0].telegram_id
+          })
+        }
+        
         setSubmissions(data.submissions || [])
         setLastRefreshed(new Date())
       } else {
         const errorText = await response.text()
-        console.error('API error response:', errorText)
-        setError(`Failed to fetch submissions: ${response.status}`)
+        console.error('❌ API error response:', errorText)
+        console.error('❌ Response status:', response.status)
+        setError(`Failed to fetch submissions: ${response.status} - ${errorText}`)
       }
     } catch (error) {
-      console.error('Fetch error:', error)
+      console.error('❌ Fetch error:', error)
+      console.error('❌ Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      })
       setError('Error fetching submissions: ' + error.message)
     } finally {
       setLoading(false)
@@ -175,6 +202,7 @@ export default function AdminPage() {
                 {lastRefreshed && (
                   <span>🕒 Last Updated: {lastRefreshed.toLocaleTimeString()}</span>
                 )}
+                <span className="text-blue-600">🔄 Auto-refresh: Every 30s</span>
               </div>
             </div>
             <div className="flex space-x-3">
@@ -186,7 +214,7 @@ export default function AdminPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <span>Refresh</span>
+                <span>Refresh Now</span>
               </button>
               <button
                 onClick={handleThemeToggle}
@@ -210,17 +238,42 @@ export default function AdminPage() {
                 )}
               </button>
               <button
+                onClick={testEmailNotifications}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                📧 Test Emails
+              </button>
+              <button
                 onClick={exportToJSON}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 📥 Export JSON
               </button>
-              <button
-                onClick={testEmailNotifications}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                📧 Test Emails
-              </button>
+            </div>
+          </div>
+          
+          {/* Debug Panel */}
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 border-t border-gray-200 dark:border-gray-600">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Debug Information</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600 dark:text-gray-400">
+              <div>
+                <span className="font-medium">API Status:</span> 
+                <span className={`ml-1 ${error ? 'text-red-500' : 'text-green-500'}`}>
+                  {error ? '❌ Error' : '✅ OK'}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium">Data Count:</span> 
+                <span className="ml-1">{submissions.length}</span>
+              </div>
+              <div>
+                <span className="font-medium">Last Fetch:</span> 
+                <span className="ml-1">{lastRefreshed ? lastRefreshed.toLocaleTimeString() : 'Never'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Auto-refresh:</span> 
+                <span className="ml-1 text-green-500">🔄 Active</span>
+              </div>
             </div>
           </div>
 
@@ -281,9 +334,16 @@ export default function AdminPage() {
         {/* Submissions List */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-xl overflow-hidden transition-colors duration-300">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">
-              Submissions ({filteredSubmissions.length})
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-300">
+                Submissions ({submissions.length})
+              </h2>
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                {submissions.length > 0 && (
+                  <span>Latest: {formatTimestamp(submissions[0].timestamp)}</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {filteredSubmissions.length === 0 ? (
