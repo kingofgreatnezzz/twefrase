@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from '../../contexts/ThemeContext'
+import Link from 'next/link'
 
 export default function AdminPage() {
   const [submissions, setSubmissions] = useState([])
@@ -274,6 +275,26 @@ export default function AdminPage() {
                 <span className="font-medium">Auto-refresh:</span> 
                 <span className="ml-1 text-green-500">🔄 Active</span>
               </div>
+            </div>
+          </div>
+
+          {/* Terms and Conditions Button */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-xl p-6 mt-6 transition-colors duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">
+                  📋 Legal Information
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">
+                  This platform operates under specific terms and conditions
+                </p>
+              </div>
+              <Link 
+                href="/terms"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                📋 View Terms & Conditions
+              </Link>
             </div>
           </div>
 

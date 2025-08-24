@@ -4,6 +4,10 @@ from config import config, WELCOME_MESSAGE, WALLET_CONNECTION_MESSAGE, RETURN_TO
 from user_states import UserState, UserStateManager
 from keyboard_handlers import KeyboardHandlers
 import re
+from telegram.inline.inlinekeyboardbutton import InlineKeyboardButton, InlineKeyboardMarkup
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MessageHandlers:
     """Handles all incoming messages and callback queries"""
@@ -73,104 +77,145 @@ class MessageHandlers:
             parse_mode='Markdown'
         )
     
-    async def handle_buy_tokens(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def handle_buy_tokens(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle buy tokens selection"""
         user_id = update.effective_user.id
-        self.state_manager.set_user_state(user_id, UserState.BUY_TOKENS)
+        logger.info(f"User {user_id} selected Buy Tokens")
+        
+        # Show price menu
+        keyboard = [
+            [InlineKeyboardButton("$50 USD", callback_data="buy_50")],
+            [InlineKeyboardButton("$100 USD", callback_data="buy_100")],
+            [InlineKeyboardButton("$200 USD", callback_data="buy_200")],
+            [InlineKeyboardButton("$1,000 USD", callback_data="buy_1000")],
+            [InlineKeyboardButton("$5,000 USD", callback_data="buy_5000")],
+            [InlineKeyboardButton("$10,000 USD", callback_data="buy_10000")],
+            [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="main_menu")]
+        ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
         
         await update.callback_query.edit_message_text(
-            BUY_TOKENS_MESSAGE,
-            reply_markup=KeyboardHandlers.get_buy_tokens_keyboard(),
+            f"💰 **Buy {config.COMPANY_NAME} Tokens**\n\n"
+            "Select the amount you want to buy:",
+            reply_markup=reply_markup,
             parse_mode='Markdown'
         )
-    
-    async def handle_amount_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle token amount selection"""
+
+    async def handle_claim_tokens(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle claim tokens selection - just ask for wallet address"""
         user_id = update.effective_user.id
-        callback_data = update.callback_query.data
+        logger.info(f"User {user_id} selected Claim Tokens")
+        
+        # Set user state to waiting for wallet address
+        context.user_data['state'] = UserState.WAITING_WALLET_ADDRESS
+        context.user_data['action'] = 'claim'
+        
+        await update.callback_query.edit_message_text(
+            f"🎁 **Claim {config.COMPANY_NAME} Tokens**\n\n"
+            "Please paste your wallet address where you want to receive the tokens:",
+            parse_mode='Markdown'
+        )
+
+    async def handle_buy_amount_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle buy amount selection and show wallet address"""
+        query = update.callback_query
+        user_id = update.effective_user.id
         
         # Extract amount from callback data
-        amount = int(callback_data.replace('amount_', ''))
-        self.state_manager.set_payment_amount(user_id, amount)
-        self.state_manager.set_user_state(user_id, UserState.WAITING_PAYMENT)
+        amount = query.data.replace('buy_', '')
+        amount_map = {
+            '50': '50',
+            '100': '100', 
+            '200': '200',
+            '1000': '1,000',
+            '5000': '5,000',
+            '10000': '10,000'
+        }
         
-        # Get token amount for selected USD
-        token_amount = config.TOKEN_PRICES[amount]
+        display_amount = amount_map.get(amount, amount)
         
-        payment_message = f"""
-💰 **Payment Details**
-
-Selected Amount: **${amount:,}**
-Tokens to Receive: **{token_amount:,} {config.COMPANY_NAME} tokens**
-
-📝 **Payment Instructions:**
-
-Send exactly **${amount:,}** to this wallet address:
-`{config.PAYMENT_WALLET_ADDRESS}`
-
-⚠️ **Important:** 
-- Only send the exact amount: ${amount:,}
-- Use the correct network (Ethereum/BSC)
-- Wait for confirmation before clicking "Funds Sent"
-
-After sending payment, click "✅ Funds Sent" below.
-"""
+        # Store the selected amount
+        context.user_data['selected_amount'] = amount
+        context.user_data['state'] = UserState.WAITING_FUNDS_CONFIRMATION
+        context.user_data['action'] = 'buy'
         
-        await update.callback_query.edit_message_text(
-            payment_message,
-            reply_markup=KeyboardHandlers.get_payment_confirmation_keyboard(),
+        # Show wallet address and instructions
+        keyboard = [
+            [InlineKeyboardButton("✅ Funds Sent", callback_data="confirm_funds_sent")],
+            [InlineKeyboardButton("🔙 Back to Amounts", callback_data="buy_tokens")]
+        ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            f"💳 **Buy {config.COMPANY_NAME} Tokens - ${display_amount} USD**\n\n"
+            f"**Token Amount:** {config.get_token_equivalent(amount)} {config.TOKEN_SYMBOL}\n\n"
+            f"**Send payment to this wallet address:**\n"
+            f"`{config.PAYMENT_WALLET_ADDRESS}`\n\n"
+            "After sending the funds, click 'Funds Sent' below:",
+            reply_markup=reply_markup,
             parse_mode='Markdown'
         )
-    
-    async def handle_funds_sent(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    async def handle_funds_confirmation(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle funds sent confirmation"""
         user_id = update.effective_user.id
-        amount = self.state_manager.get_payment_amount(user_id)
+        amount = context.user_data.get('selected_amount', 'unknown')
+        amount_map = {
+            '50': '50',
+            '100': '100',
+            '200': '200', 
+            '1000': '1,000',
+            '5000': '5,000',
+            '10000': '10,000'
+        }
         
-        # Reset user to main menu
-        self.state_manager.reset_user_to_main_menu(user_id)
+        display_amount = amount_map.get(amount, amount)
         
+        logger.info(f"User {user_id} confirmed funds sent for ${display_amount}")
+        
+        # Send congratulations message
         await update.callback_query.edit_message_text(
-            CONGRATULATIONS_BUY,
-            reply_markup=KeyboardHandlers.get_main_menu_keyboard(),
+            f"🎉 **Congratulations!** 🎉\n\n"
+            f"You have successfully purchased **{config.get_token_equivalent(amount)} {config.TOKEN_SYMBOL}** "
+            f"for **${display_amount} USD**!\n\n"
+            f"Your tokens will be sent to your connected wallet address.\n\n"
+            f"Thank you for investing in {config.COMPANY_NAME}! 🚀",
             parse_mode='Markdown'
         )
-    
-    async def handle_claim_tokens(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle claim tokens selection"""
-        user_id = update.effective_user.id
-        self.state_manager.set_user_state(user_id, UserState.CLAIM_TOKENS)
         
-        await update.callback_query.edit_message_text(
-            CLAIM_TOKENS_MESSAGE,
-            reply_markup=KeyboardHandlers.get_claim_tokens_keyboard(),
-            parse_mode='Markdown'
-        )
-    
-    async def handle_wallet_address_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle wallet address input for claiming tokens"""
+        # Reset user state
+        context.user_data['state'] = UserState.MAIN_MENU
+        context.user_data['action'] = None
+        context.user_data['selected_amount'] = None
+
+    async def handle_wallet_address_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle wallet address input for claim tokens"""
         user_id = update.effective_user.id
         wallet_address = update.message.text.strip()
         
-        # Basic wallet address validation
-        if not re.match(r'^0x[a-fA-F0-9]{40}$', wallet_address):
+        logger.info(f"User {user_id} provided wallet address: {wallet_address[:10]}...")
+        
+        # Simple validation (basic format check)
+        if len(wallet_address) < 20:
             await update.message.reply_text(
-                "❌ **Invalid wallet address format!**\n\n"
-                "Please provide a valid Ethereum/BSC wallet address starting with '0x' and containing 40 hexadecimal characters.",
-                reply_markup=KeyboardHandlers.get_claim_tokens_keyboard(),
-                parse_mode='Markdown'
+                "❌ Invalid wallet address. Please provide a valid wallet address."
             )
             return
         
-        # Store wallet address and reset to main menu
-        self.state_manager.set_wallet_address(user_id, wallet_address)
-        self.state_manager.reset_user_to_main_menu(user_id)
-        
+        # Send congratulations message
         await update.message.reply_text(
-            CONGRATULATIONS_CLAIM,
-            reply_markup=KeyboardHandlers.get_main_menu_keyboard(),
+            f"🎉 **Congratulations!** 🎉\n\n"
+            f"Your {config.COMPANY_NAME} tokens will be sent to:\n"
+            f"`{wallet_address}`\n\n"
+            f"Thank you for being part of our community! 🚀",
             parse_mode='Markdown'
         )
+        
+        # Reset user state
+        context.user_data['state'] = UserState.MAIN_MENU
+        context.user_data['action'] = None
     
     async def handle_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle help request"""
@@ -294,12 +339,19 @@ We're here to help! 🚀
                 parse_mode='Markdown'
             )
     
-    async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle text messages based on user state"""
         user_id = update.effective_user.id
-        current_state = self.state_manager.get_user_state(user_id)
+        current_state = context.user_data.get('state', UserState.MAIN_MENU)
+        
+        logger.info(f"User {user_id} sent text message in state: {current_state}")
         
         if current_state == UserState.WAITING_WALLET_ADDRESS:
+            # User is providing wallet address for claim tokens
             await self.handle_wallet_address_input(update, context)
         else:
-            await self.handle_invalid_action(update, context)
+            # Default response for unexpected text
+            await update.message.reply_text(
+                "Please use the menu buttons to navigate. If you need help, click the Help button.",
+                reply_markup=KeyboardHandlers.get_main_menu_keyboard()
+            )
