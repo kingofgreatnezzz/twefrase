@@ -1,15 +1,26 @@
 'use client'
 
 import { useTheme } from '../../contexts/ThemeContext'
+import { useEffect, useState } from 'react'
 
 export default function TestThemePage() {
   const { isDark, toggleTheme, isLoaded } = useTheme()
+  const [darkModeInfo, setDarkModeInfo] = useState({
+    hasDarkClass: false,
+    localStorageTheme: null
+  })
 
-  const checkDarkMode = () => {
-    const hasDarkClass = document.documentElement.classList.contains('dark')
-    const localStorageTheme = localStorage.getItem('theme')
-    return { hasDarkClass, localStorageTheme }
-  }
+  useEffect(() => {
+    const checkDarkMode = () => {
+      if (typeof document !== 'undefined' && typeof localStorage !== 'undefined') {
+        const hasDarkClass = document.documentElement.classList.contains('dark')
+        const localStorageTheme = localStorage.getItem('theme')
+        setDarkModeInfo({ hasDarkClass, localStorageTheme })
+      }
+    }
+
+    checkDarkMode()
+  }, [])
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 p-8">
@@ -28,11 +39,11 @@ export default function TestThemePage() {
           </p>
 
           <p className="text-gray-700 dark:text-gray-300 mb-4">
-            HTML has 'dark' class: <strong>{checkDarkMode().hasDarkClass ? 'Yes' : 'No'}</strong>
+            HTML has 'dark' class: <strong>{darkModeInfo.hasDarkClass ? 'Yes' : 'No'}</strong>
           </p>
 
           <p className="text-gray-700 dark:text-gray-300 mb-4">
-            LocalStorage theme: <strong>{checkDarkMode().localStorageTheme || 'None'}</strong>
+            LocalStorage theme: <strong>{darkModeInfo.localStorageTheme || 'None'}</strong>
           </p>
           
           <button
