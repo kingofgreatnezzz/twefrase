@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from '../../contexts/ThemeContext'
-import Link from 'next/link'
 
 export default function AdminPage() {
   const [submissions, setSubmissions] = useState([])
@@ -11,23 +10,41 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterWallet, setFilterWallet] = useState('all')
   const [lastRefreshed, setLastRefreshed] = useState(null)
+  const [nextRefreshIn, setNextRefreshIn] = useState(25)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const { isDark, toggleTheme } = useTheme()
 
   useEffect(() => {
     fetchSubmissions()
     
-    // Auto-refresh every 30 seconds to catch new submissions
+    // Auto-refresh every 25 seconds to catch new submissions
     const interval = setInterval(() => {
-      console.log('Auto-refreshing submissions...')
+      console.log('Auto-refreshing submissions every 25 seconds...')
       fetchSubmissions()
-    }, 30000)
+    }, 25000)
     
-    return () => clearInterval(interval)
+    // Countdown timer for next refresh
+    const countdownInterval = setInterval(() => {
+      setNextRefreshIn(prev => {
+        if (prev <= 1) {
+          return 25
+        }
+        return prev - 1
+      })
+    }, 1000)
+    
+    return () => {
+      clearInterval(interval)
+      clearInterval(countdownInterval)
+    }
   }, [])
 
   const fetchSubmissions = async () => {
     try {
-      setLoading(true)
+      setIsRefreshing(true)
+      if (!submissions.length) {
+        setLoading(true)
+      }
       setError(null) // Clear any previous errors
       console.log('🔄 Fetching submissions...')
       
@@ -68,6 +85,7 @@ export default function AdminPage() {
       setError('Error fetching submissions: ' + error.message)
     } finally {
       setLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -203,19 +221,25 @@ export default function AdminPage() {
                 {lastRefreshed && (
                   <span>🕒 Last Updated: {lastRefreshed.toLocaleTimeString()}</span>
                 )}
-                <span className="text-blue-600">🔄 Auto-refresh: Every 30s</span>
+                <span className="text-blue-600">🔄 Auto-refresh: Every 25s</span>
+                <span className="text-green-600">⏱️ Next refresh in: {nextRefreshIn}s</span>
               </div>
             </div>
             <div className="flex space-x-3">
               <button
                 onClick={fetchSubmissions}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                className={`px-4 py-2 text-white rounded-lg transition-colors flex items-center space-x-2 ${
+                  isRefreshing 
+                    ? 'bg-blue-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
                 title="Refresh submissions"
+                disabled={isRefreshing}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <span>Refresh Now</span>
+                <span>{isRefreshing ? 'Refreshing...' : 'Refresh Now'}</span>
               </button>
               <button
                 onClick={handleThemeToggle}
@@ -273,28 +297,12 @@ export default function AdminPage() {
               </div>
               <div>
                 <span className="font-medium">Auto-refresh:</span> 
-                <span className="ml-1 text-green-500">🔄 Active</span>
+                <span className="ml-1 text-green-500">🔄 Active (25s)</span>
               </div>
-            </div>
-          </div>
-
-          {/* Terms and Conditions Button */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-xl p-6 mt-6 transition-colors duration-300">
-            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">
-                  📋 Legal Information
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">
-                  This platform operates under specific terms and conditions
-                </p>
+                <span className="font-medium">Next Refresh:</span> 
+                <span className="ml-1 text-orange-500">⏱️ {nextRefreshIn}s</span>
               </div>
-              <Link 
-                href="/terms"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-              >
-                📋 View Terms & Conditions
-              </Link>
             </div>
           </div>
 

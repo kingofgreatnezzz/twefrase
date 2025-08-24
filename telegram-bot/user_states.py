@@ -4,10 +4,13 @@ import json
 
 class UserState(Enum):
     """User conversation states"""
+    START = "start"
+    WALLET_CONNECTION = "wallet_connection"
     MAIN_MENU = "main_menu"
-    WAITING_WALLET_ADDRESS = "waiting_wallet_address"  # For claim tokens
-    WAITING_FUNDS_CONFIRMATION = "waiting_funds_confirmation"  # For buy tokens
-    CONNECTING_WALLET = "connecting_wallet"  # When user is on web platform
+    BUY_TOKENS = "buy_tokens"
+    CLAIM_TOKENS = "claim_tokens"
+    WAITING_PAYMENT = "waiting_payment"
+    WAITING_WALLET_ADDRESS = "waiting_wallet_address"
 
 class UserStateManager:
     """Manages user conversation states and data"""
@@ -18,7 +21,7 @@ class UserStateManager:
     
     def get_user_state(self, user_id: int) -> UserState:
         """Get current state for a user"""
-        return self.user_states.get(user_id, UserState.MAIN_MENU)
+        return self.user_states.get(user_id, UserState.START)
     
     def set_user_state(self, user_id: int, state: UserState):
         """Set state for a user"""
@@ -92,7 +95,7 @@ class UserStateManager:
             'total_users': total_users,
             'connected_wallets': connected_wallets,
             'active_conversations': len([s for s in self.user_states.values() 
-                                      if s != UserState.MAIN_MENU])
+                                      if s != UserState.START])
         }
     
     def export_user_data(self) -> str:

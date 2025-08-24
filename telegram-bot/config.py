@@ -89,18 +89,6 @@ class Config:
             'payment_wallet': self.PAYMENT_WALLET_ADDRESS
         }
 
-    def get_token_equivalent(self, usd_amount: str) -> str:
-        """Get token equivalent for USD amount"""
-        amount_map = {
-            '50': '5,000',
-            '100': '10,000',
-            '200': '20,000',
-            '1000': '100,000',
-            '5000': '500,000',
-            '10000': '1,000,000'
-        }
-        return amount_map.get(usd_amount, 'Unknown')
-
 # Create global config instance
 config = Config()
 

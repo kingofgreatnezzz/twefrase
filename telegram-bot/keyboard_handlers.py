@@ -16,14 +16,13 @@ class KeyboardHandlers:
         return InlineKeyboardMarkup(keyboard)
     
     @staticmethod
-    def get_main_menu_keyboard():
+    def get_main_menu_keyboard() -> InlineKeyboardMarkup:
         """Get main menu keyboard"""
         keyboard = [
             [InlineKeyboardButton("💰 Buy Tokens", callback_data="buy_tokens")],
             [InlineKeyboardButton("🎁 Claim Tokens", callback_data="claim_tokens")],
-            [InlineKeyboardButton("🔗 Connect Wallet", callback_data="connect_wallet")],
-            [InlineKeyboardButton("❓ Help", callback_data="help")],
-            [InlineKeyboardButton("🆘 Support", callback_data="support")]
+            [InlineKeyboardButton("ℹ️ Help", callback_data="help")],
+            [InlineKeyboardButton("🔄 Reset", callback_data="reset")]
         ]
         return InlineKeyboardMarkup(keyboard)
     

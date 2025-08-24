@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '../contexts/ThemeContext'
 import WalletSelector from '../components/WalletSelector'
 import PhraseInput from '../components/PhraseInput'
-import Link from 'next/link'
 
 export default function Home() {
   const [selectedWallet, setSelectedWallet] = useState(null)
@@ -195,24 +194,6 @@ export default function Home() {
               onBack={handleBackToWalletSelection}
             />
           )}
-        </div>
-
-        {/* Contact Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-xl p-6 mb-6 transition-colors duration-300">
-          
-          
-          {/* Terms and Conditions Button */}
-          <div className="flex flex-row justify-center items-center">
-            <p className="text-sm text-gray-800 dark:text-gray-700 mb-3">
-              By using this platform, you agree to our terms and conditions
-            </p>
-            <Link 
-              href="/terms"
-              className="text-sm text-gray-800 dark:text-gray-700 mb-3 ml-3"
-            >
-              Terms & Conditions
-            </Link>
-          </div>
         </div>
       </div>
     </main>

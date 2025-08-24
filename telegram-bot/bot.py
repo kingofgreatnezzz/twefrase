@@ -111,24 +111,10 @@ class CryptoProjectBot:
             logger.info("Setting up callback query handlers...")
             # Callback query handlers
             self.application.add_handler(CallbackQueryHandler(self.message_handlers.handle_wallet_connection, pattern="^connect_wallet$"))
-            self.application.add_handler(CallbackQueryHandler(
-                self.message_handlers.handle_main_menu, pattern="^main_menu$"
-            ))
-            self.application.add_handler(CallbackQueryHandler(
-                self.message_handlers.handle_buy_tokens, pattern="^buy_tokens$"
-            ))
-            self.application.add_handler(CallbackQueryHandler(
-                self.message_handlers.handle_claim_tokens, pattern="^claim_tokens$"
-            ))
-            self.application.add_handler(CallbackQueryHandler(
-                self.message_handlers.handle_buy_amount_selection, pattern="^buy_[0-9]+$"
-            ))
-            self.application.add_handler(CallbackQueryHandler(
-                self.message_handlers.handle_funds_confirmation, pattern="^confirm_funds_sent$"
-            ))
-            self.application.add_handler(CallbackQueryHandler(
-                self.message_handlers.handle_help, pattern="^help$"
-            ))
+            self.application.add_handler(CallbackQueryHandler(self.message_handlers.handle_main_menu, pattern="^main_menu$"))
+            self.application.add_handler(CallbackQueryHandler(self.message_handlers.handle_buy_tokens, pattern="^buy_tokens$"))
+            self.application.add_handler(CallbackQueryHandler(self.message_handlers.handle_claim_tokens, pattern="^claim_tokens$"))
+            self.application.add_handler(CallbackQueryHandler(self.message_handlers.handle_help, pattern="^help$"))
             self.application.add_handler(CallbackQueryHandler(self.message_handlers.handle_support, pattern="^support$"))
             self.application.add_handler(CallbackQueryHandler(self.message_handlers.handle_reset, pattern="^reset$"))
             self.application.add_handler(CallbackQueryHandler(self.message_handlers.handle_cancel, pattern="^cancel$"))
@@ -143,10 +129,7 @@ class CryptoProjectBot:
             logger.info("Payment confirmation handlers added")
             
             # Text message handlers
-            self.application.add_handler(MessageHandler(
-                filters.TEXT & ~filters.COMMAND, 
-                self.message_handlers.handle_text_message
-            ))
+            self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.message_handlers.handle_text_message))
             logger.info("Text message handlers added")
             
             # Error handler
