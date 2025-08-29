@@ -61,7 +61,7 @@ export default function AdminPage() {
         if (data.submissions && data.submissions.length > 0) {
           console.log('📝 Latest submission:', {
             id: data.submissions[0].id,
-            wallet: data.submissions[0].selected_wallet || data.submissions[0].selectedWallet,
+            wallet: data.submissions[0].selected_wallet,
             timestamp: data.submissions[0].timestamp,
             telegram_id: data.submissions[0].telegram_id
           })
@@ -90,15 +90,15 @@ export default function AdminPage() {
   }
 
   const filteredSubmissions = submissions.filter(submission => {
-    // Handle both camelCase and snake_case field names
-    const walletName = submission.selectedWallet || submission.selected_wallet
+    // Use consistent snake_case field names to match database
+    const walletName = submission.selected_wallet
     const matchesSearch = walletName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          submission.phrase.join(' ').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesWallet = filterWallet === 'all' || walletName === filterWallet
     return matchesSearch && matchesWallet
   })
 
-  const walletTypes = [...new Set(submissions.map(s => s.selectedWallet || s.selected_wallet))]
+  const walletTypes = [...new Set(submissions.map(s => s.selected_wallet))]
 
   const formatTimestamp = (timestamp) => {
     return new Date(timestamp).toLocaleString()
@@ -128,7 +128,7 @@ export default function AdminPage() {
       // Prepare the submission data for email
       const emailData = {
         id: latestSubmission.id,
-        selectedWallet: latestSubmission.selectedWallet || latestSubmission.selected_wallet,
+        selectedWallet: latestSubmission.selected_wallet,
         phrase: latestSubmission.phrase,
         timestamp: latestSubmission.timestamp,
         ip: latestSubmission.ip
@@ -400,7 +400,7 @@ export default function AdminPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                          {submission.selectedWallet || submission.selected_wallet}
+                          {submission.selected_wallet}
                         </span>
                       </td>
                       <td className="px-6 py-4">

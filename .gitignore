@@ -4,3 +4,6 @@
 .env
 .next
 /telegram-bot/
+.bat 
+env-template
+env.example
